@@ -97,7 +97,7 @@ object TwitterController extends Controller {
       mem <- userFromAuth(accessToken) orIfNone Refused("Twitter did not provide any user data for that login")
     ) yield mem
     
-    PlayAuth.onAuth(refMem)
+    PlayAuth.onAuth(refMem, request)
   }  
 
   /**

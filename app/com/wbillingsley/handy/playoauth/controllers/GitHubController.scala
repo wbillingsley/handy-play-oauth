@@ -42,9 +42,24 @@ object GitHubController extends Controller {
   def callback = Action { implicit request =>    
     
     import play.api.libs.concurrent.Execution.Implicits._
-    
+
     val stateFromSession = request.session.get("oauth_state")
     val stateFromRequest = request.getQueryString("state")
+
+    /*
+     * TODO: We've had a few errors where we were getting a mismatch between the OAuth state in the
+     * session and in the callback from GitHub. For the moment, let's turn off the check and log
+     * whenever there is a mismatch to see if we can uncover why. 
+     */
+    if (stateFromSession.isEmpty) { 
+    	Logger.warn("GitHub OAuth - state from session was empty")
+    } 
+    if (stateFromRequest.isEmpty) { 
+    	Logger.warn("GitHub OAuth - state from request was empty")
+    } 
+    if (stateFromSession != stateFromRequest) {
+    	Logger.warn(s"GitHub OAuth - state from request was $stateFromRequest but state from session was $stateFromSession")
+    }          
 
     /**
      * Calls GitHub to swap a code for an auth_token
@@ -101,7 +116,7 @@ object GitHubController extends Controller {
       mem <- userFromAuth(authToken) orIfNone Refused("GitHub did not provide any user data for that login")
     ) yield mem
     
-    PlayAuth.onAuth(refMem)
+    PlayAuth.onAuth(refMem, request)
   }
   
 }
