@@ -1,0 +1,10 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# ~~~~
+
+
+# Auth
+GET     /twitter               com.wbillingsley.handy.playoauth.controllers.TwitterController.requestAuth
+GET     /twitter/callback      com.wbillingsley.handy.playoauth.controllers.TwitterController.callback
+GET     /github                com.wbillingsley.handy.playoauth.controllers.GitHubController.requestAuth
+GET     /github/callback       com.wbillingsley.handy.playoauth.controllers.GitHubController.callback
