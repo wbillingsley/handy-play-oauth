@@ -10,6 +10,7 @@ import com.wbillingsley.handy.playoauth._
 import Ref._
 import play.Logger
 import com.wbillingsley.handy.playoauth.PlayAuth
+import play.api.mvc.EssentialAction
 
 /**
  * Implements log in with the GitHub API
@@ -39,7 +40,7 @@ object GitHubController extends Controller {
     ).withSession(request.session + ("oauth_state" -> randomString))
   } 
   
-  def callback = Action { implicit request =>    
+  def callback = EssentialAction { implicit request =>    
     
     import play.api.libs.concurrent.Execution.Implicits._
 
@@ -115,8 +116,7 @@ object GitHubController extends Controller {
       authToken <- authTokenFromCode(code) orIfNone Refused("GitHub did not provide an authorization token");
       mem <- userFromAuth(authToken) orIfNone Refused("GitHub did not provide any user data for that login")
     ) yield mem
-    
-    PlayAuth.onAuth(refMem, request)
+    PlayAuth.onAuth(refMem)(request)
   }
   
 }

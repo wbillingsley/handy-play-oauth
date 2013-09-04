@@ -1,7 +1,7 @@
 package com.wbillingsley.handy.playoauth.controllers
 
 import play.api.libs.oauth.{OAuth, OAuthCalculator, ConsumerKey, ServiceInfo, RequestToken}
-import play.api.mvc.{Controller, Action, Request}
+import play.api.mvc.{Controller, Action, Request, RequestHeader, EssentialAction}
 import play.api.libs.ws.WS
 import com.wbillingsley.handy.{Ref, RefFuture, Refused, RefFailed}
 import com.wbillingsley.handy.playoauth._
@@ -9,6 +9,7 @@ import Ref._
 import play.api.Play
 import Play.current
 import com.wbillingsley.handy.playoauth.PlayAuth
+
 
 
 /**
@@ -49,12 +50,12 @@ object TwitterController extends Controller {
   /**
    * Twitter redirects the user back to this action upon authorization
    */
-  def callback = Action { implicit request =>
+  def callback = EssentialAction { implicit request =>
     
     /**
      * Finds a request or access token from the request, if there is one
      */
-    def sessionTokenPair(implicit request: Request[_]): Ref[RequestToken] = {    
+    def sessionTokenPair(implicit request: RequestHeader): Ref[RequestToken] = {    
       Ref(for {
         token <- request.session.get(TOKENNAME)
         secret <- request.session.get(SECRETNAME)
@@ -96,8 +97,8 @@ object TwitterController extends Controller {
       };
       mem <- userFromAuth(accessToken) orIfNone Refused("Twitter did not provide any user data for that login")
     ) yield mem
-    
-    PlayAuth.onAuth(refMem, request)
+        
+    PlayAuth.onAuth(refMem)(request)
   }  
 
   /**
