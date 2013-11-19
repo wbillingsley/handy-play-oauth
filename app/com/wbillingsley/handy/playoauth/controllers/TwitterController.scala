@@ -101,14 +101,14 @@ object TwitterController extends Controller with OAuthController {
     
     // Fetch the user data from Twitter
     val refMem = for {
-      verifier <- request.getQueryString("oauth_verifier").toRef orIfNone Refused("Twitter did not provide a verification code")
-      oAuth <- oAuthOpt.toRef orIfNone new IllegalStateException("This server's client key and secret for Twitter have not been set")
+      verifier <- request.getQueryString("oauth_verifier").toRef orIfNone AuthFailed("Twitter did not provide a verification code")
+      oAuth <- oAuthOpt.toRef orIfNone AuthFailed("This server's client key and secret for Twitter have not been set")
       tokenPair <- sessionTokenPair(request)
       accessToken <- oAuth.retrieveAccessToken(tokenPair, verifier) match {
         case Right(t) => t.itself
-        case Left(e) => RefFailed(Refused("Twitter did not provide an access token"))
+        case Left(e) => RefFailed(AuthFailed("Twitter did not provide an access token"))
       };
-      mem <- userFromAuth(accessToken) orIfNone Refused("Twitter did not provide any user data for that login")
+      mem <- userFromAuth(accessToken) orIfNone AuthFailed("Twitter did not provide any user data for that login")
     } yield mem
         
     PlayAuth.onAuthR(refMem)(request)

@@ -119,9 +119,9 @@ object GitHubController extends Controller with OAuthController {
     }    
     
     val refMem = for (
-      code <- Ref(request.getQueryString("code")) orIfNone Refused("GitHub provided no code");
-      authToken <- authTokenFromCode(code) orIfNone Refused("GitHub did not provide an authorization token");
-      mem <- userFromAuth(authToken) orIfNone Refused("GitHub did not provide any user data for that login")
+      code <- Ref(request.getQueryString("code")) orIfNone AuthFailed("GitHub provided no code");
+      authToken <- authTokenFromCode(code) orIfNone AuthFailed("GitHub did not provide an authorization token");
+      mem <- userFromAuth(authToken) orIfNone AuthFailed("GitHub did not provide any user data for that login")
     ) yield mem
     
     PlayAuth.onAuthR(refMem)(request)
