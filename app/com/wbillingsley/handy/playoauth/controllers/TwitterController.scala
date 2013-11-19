@@ -14,7 +14,7 @@ import com.wbillingsley.handy.playoauth.PlayAuth
  * Handles Twitter log-in. Based on sample code from Play Framework 
  * documentation.
  */
-object TwitterController extends Controller {
+object TwitterController extends Controller with OAuthController {
   
   val key = for (
       ck <- Play.configuration.getString("auth.twitter.ckey"); 
@@ -25,6 +25,7 @@ object TwitterController extends Controller {
     val name = "Twitter"
     def available = key.isDefined 
   }
+  def service = Twitter
     
   val oAuthOpt = for (k <- key) yield OAuth(ServiceInfo(
     "https://api.twitter.com/oauth/request_token",

@@ -12,7 +12,7 @@ import play.api.mvc.EssentialAction
 /**
  * Implements log in with the GitHub API
  */
-object GitHubController extends Controller {
+object GitHubController extends Controller with OAuthController {
 
   val clientKey = Play.configuration.getString("auth.github.ckey")
   val secret = Play.configuration.getString("auth.github.csecret")
@@ -21,6 +21,8 @@ object GitHubController extends Controller {
     val name = "Github"
     def available = clientKey.isDefined && secret.isDefined 
   }
+  
+  def service = GitHub
   
   /**
    * Beginning of the Sign in with GitHub flow, using OAuth2.

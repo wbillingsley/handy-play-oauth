@@ -1,14 +1,12 @@
 package com.wbillingsley.handy.playoauth
 
 import com.wbillingsley.handy.Ref
-import play.api.mvc.Results
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import play.api.mvc.Request
-import play.api.mvc.AnyContent
-import play.api.mvc.{Action, EssentialAction}
+import play.api.mvc.{Action, EssentialAction, Request, Results, AnyContent}
 import scala.util.{Try, Success, Failure}
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.iteratee.Iteratee
-
+import play.api.Play
+import play.api.Play.current
 
 object PlayAuth {
     
@@ -51,6 +49,14 @@ object PlayAuth {
     }
   }
   
+  var allowGet = Play.configuration.getBoolean("auth.oauth.allowGet").getOrElse(false)
+  
+  val allControllers = Seq(
+    controllers.GitHubController,
+    controllers.TwitterController
+  )
+  
+  def enabledServices = allControllers.map(_.service).filter(_.available)
 
 }
 
@@ -59,3 +65,18 @@ trait Service {
   def available:Boolean
 }
 
+trait OAuthController {
+  
+  def requestAuth: EssentialAction
+  
+  def getAuth = {
+    if (PlayAuth.allowGet) requestAuth else {
+      Action {
+        Results.Forbidden("Initiating OAuth via GET is not enabled on this server.")
+      }
+    }
+  }
+  
+  def service: Service
+  
+}
