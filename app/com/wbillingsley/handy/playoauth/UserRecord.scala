@@ -27,3 +27,20 @@ object UserRecord {
   implicit val jsonFormat = Json.format[UserRecord]
   
 }
+
+trait Details
+
+case class OAuthDetails(
+  userRecord: UserRecord,
+  raw: Option[JsValue],
+  returnTo: Option[String] = None,
+  details: Option[Details] = None 
+) {
+  
+  def toJson = Json.obj(
+    "userRecord" -> UserRecord.jsonFormat.writes(userRecord),
+    "returnTo" -> returnTo,
+    "raw" -> raw
+  )
+  
+}

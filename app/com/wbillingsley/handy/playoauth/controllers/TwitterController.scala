@@ -10,25 +10,28 @@ import play.api.Play
 import Play.current
 import com.wbillingsley.handy.playoauth.PlayAuth
 
-
-
 /**
  * Handles Twitter log-in. Based on sample code from Play Framework 
  * documentation.
  */
 object TwitterController extends Controller {
   
-  val KEY = ConsumerKey(
-    // TODO: Fix this to throw a meaningful error message if the keys have not been set
-    Play.configuration.getString("auth.twitter.ckey").getOrElse("No key"), 
-    Play.configuration.getString("auth.twitter.csecret").getOrElse("No secret")
-  )
-
-  val TWITTER = OAuth(ServiceInfo(
+  val key = for (
+      ck <- Play.configuration.getString("auth.twitter.ckey"); 
+      s <- Play.configuration.getString("auth.twitter.csecret")
+  ) yield ConsumerKey(ck, s)
+  
+  case object Twitter extends Service {
+    val name = "Twitter"
+    def available = key.isDefined 
+  }
+    
+  val oAuthOpt = for (k <- key) yield OAuth(ServiceInfo(
     "https://api.twitter.com/oauth/request_token",
     "https://api.twitter.com/oauth/access_token",
-    "https://api.twitter.com/oauth/authorize", KEY),
-    false)
+    "https://api.twitter.com/oauth/authorize", k),
+    false
+  )
     
   val TOKENNAME = "twittertoken"
   val SECRETNAME = "twittersecret"
@@ -37,13 +40,18 @@ object TwitterController extends Controller {
    * Beginning of the Sign in with Twitter flow, using OAuth1.
    * 
    */
-  def requestAuth = Action { implicit request =>      
-    TWITTER.retrieveRequestToken(routes.TwitterController.callback.absoluteURL()) match {
-      case Right(t) => {
-        // We received the unauthorized tokens in the OAuth object - store it before we proceed
-        Redirect(TWITTER.redirectUrl(t.token)).withSession(request.session + (TOKENNAME -> t.token) + (SECRETNAME -> t.secret))
+  def requestAuth = Action { implicit request =>
+    oAuthOpt match {
+      case Some(oAuth) => { 
+        oAuth.retrieveRequestToken(routes.TwitterController.callback.absoluteURL()) match {
+          case Right(t) => {
+            // We received the unauthorized tokens in the OAuth object - store it before we proceed
+            Redirect(oAuth.redirectUrl(t.token)).withSession(request.session + (TOKENNAME -> t.token) + (SECRETNAME -> t.secret))
+          }
+          case Left(e) => throw e
+        }
       }
-      case Left(e) => throw e
+      case _ => InternalServerError("This server's client key and secret for Twitter have not been set")
     }
   }  
   
@@ -65,40 +73,44 @@ object TwitterController extends Controller {
     }    
     
     /**
-     * Given an authentication token, goes and looks up that user's details on GitHub
+     * Given an authentication token, goes and looks up that user's details
      */
     def userFromAuth(token: RequestToken) = {
-      val ws = WS.url("https://api.twitter.com/1.1/account/verify_credentials.json").sign(OAuthCalculator(KEY, token)).get()
       
-      for (
-        resp <- new RefFuture(ws);
-        json = resp.json;
+      for {
+        k <- key.toRef orIfNone new IllegalStateException("This server's client key and secret for Twitter have not been set")
+        ws = WS.url("https://api.twitter.com/1.1/account/verify_credentials.json").sign(OAuthCalculator(k, token)).get()
+        resp <- new RefFuture(ws)
+        json = resp.json
         id <- (json \ "id_str").asOpt[String]
-      ) yield {
-        UserRecord(
+      } yield {
+        OAuthDetails(
+          userRecord = UserRecord(
             service = "twitter",
             id = id,
             name = (json \ "name").asOpt[String],
             nickname = (json \ "screen_name").asOpt[String],
             username = (json \ "screen_name").asOpt[String],
-            avatar = (json \ "profile_image_url").asOpt[String],
-            raw = Some(json)
-          )
+            avatar = (json \ "profile_image_url").asOpt[String]
+          ),
+          raw = Some(json)
+        )
       }
     }      
     
     // Fetch the user data from Twitter
-    val refMem = for (
-      verifier <- Ref(request.getQueryString("oauth_verifier")) orIfNone Refused("Twitter did not provide a verification code");
-      tokenPair <- sessionTokenPair(request);
-      accessToken <- TWITTER.retrieveAccessToken(tokenPair, verifier) match {
+    val refMem = for {
+      verifier <- request.getQueryString("oauth_verifier").toRef orIfNone Refused("Twitter did not provide a verification code")
+      oAuth <- oAuthOpt.toRef orIfNone new IllegalStateException("This server's client key and secret for Twitter have not been set")
+      tokenPair <- sessionTokenPair(request)
+      accessToken <- oAuth.retrieveAccessToken(tokenPair, verifier) match {
         case Right(t) => t.itself
         case Left(e) => RefFailed(Refused("Twitter did not provide an access token"))
       };
       mem <- userFromAuth(accessToken) orIfNone Refused("Twitter did not provide any user data for that login")
-    ) yield mem
+    } yield mem
         
-    PlayAuth.onAuth(refMem)(request)
+    PlayAuth.onAuthR(refMem)(request)
   }  
 
   /**

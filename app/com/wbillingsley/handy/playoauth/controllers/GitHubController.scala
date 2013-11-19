@@ -1,15 +1,12 @@
 package com.wbillingsley.handy.playoauth.controllers
-
-import play.api.mvc.{Controller, Action, Request}
+import play.api.mvc.{Controller, Action}
 import play.api.libs.ws.WS
 import play.api.Play
-import Play.current
-import com.wbillingsley.encrypt.Encrypt
+import play.api.Play.current
 import com.wbillingsley.handy.{Ref, RefFuture, Refused}
 import com.wbillingsley.handy.playoauth._
-import Ref._
+import com.wbillingsley.handy.Ref._
 import play.Logger
-import com.wbillingsley.handy.playoauth.PlayAuth
 import play.api.mvc.EssentialAction
 
 /**
@@ -17,8 +14,13 @@ import play.api.mvc.EssentialAction
  */
 object GitHubController extends Controller {
 
-  val clientKey = Play.configuration.getString("auth.github.ckey").getOrElse("No key")
-  val secret = Play.configuration.getString("auth.github.csecret").getOrElse("No secret")  
+  val clientKey = Play.configuration.getString("auth.github.ckey")
+  val secret = Play.configuration.getString("auth.github.csecret")
+  
+  case object GitHub extends Service {
+    val name = "Github"
+    def available = clientKey.isDefined && secret.isDefined 
+  }
   
   /**
    * Beginning of the Sign in with GitHub flow, using OAuth2.
@@ -26,18 +28,21 @@ object GitHubController extends Controller {
    * sign-in endpoint. 
    */
   def requestAuth = Action { implicit request =>    
-    val randomString = Encrypt.genSaltB64
-    
+    val randomString = java.util.UUID.randomUUID().toString()
     val returnUrl = ""
     
-    Redirect(
+    if (GitHub.available) {
+      Redirect(
         "https://github.com/login/oauth/authorize", 
         Map(
           "state" -> Seq(randomString),
-          "client_id" -> Seq(clientKey)  
+          "client_id" -> clientKey.toSeq  
         ), 
         303
-    ).withSession(request.session + ("oauth_state" -> randomString))
+      ).withSession(request.session + ("oauth_state" -> randomString))
+    } else {
+      InternalServerError("This server's client key and secret for GitHub have not been set")
+    }
   } 
   
   def callback = EssentialAction { implicit request =>    
@@ -53,13 +58,13 @@ object GitHubController extends Controller {
      * whenever there is a mismatch to see if we can uncover why. 
      */
     if (stateFromSession.isEmpty) { 
-    	Logger.warn("GitHub OAuth - state from session was empty")
+      Logger.warn("GitHub OAuth - state from session was empty")
     } 
     if (stateFromRequest.isEmpty) { 
-    	Logger.warn("GitHub OAuth - state from request was empty")
+      Logger.warn("GitHub OAuth - state from request was empty")
     } 
     if (stateFromSession != stateFromRequest) {
-    	Logger.warn(s"GitHub OAuth - state from request was $stateFromRequest but state from session was $stateFromSession")
+      Logger.warn(s"GitHub OAuth - state from request was $stateFromRequest but state from session was $stateFromSession")
     }          
 
     /**
@@ -67,19 +72,17 @@ object GitHubController extends Controller {
      */
     def authTokenFromCode(code:String):Ref[String] = {
       val ws = WS.url("https://github.com/login/oauth/access_token").
-    		  		withHeaders("Accept" -> "application/json").
-    		  		post(Map(
-				        "code" -> Seq(code),
-				        "client_id" -> Seq(clientKey),
-				        "client_secret" -> Seq(secret)
-				    ))
-	  val authToken = for (
-	      resp <- new RefFuture(ws);
-	      
-	      tok <- { println(resp.json); (resp.json \ "access_token").asOpt[String] }
-	  ) yield tok
-				    
-	  authToken
+        withHeaders("Accept" -> "application/json").
+        post(Map(
+          "code" -> Seq(code),
+          "client_id" -> clientKey.toSeq,
+          "client_secret" -> secret.toSeq
+      ))
+      val authToken = for (
+        resp <- new RefFuture(ws);
+        tok <- { println(resp.json); (resp.json \ "access_token").asOpt[String] }
+      ) yield tok
+      authToken
     }
     
     /**
@@ -89,25 +92,27 @@ object GitHubController extends Controller {
      */
     def userFromAuth(authToken:String) = {
       val ws = WS.url("https://api.github.com/user").
-    		  		withHeaders(
-    		  		  "Accept" -> "application/json",
-    		  		  "Authorization" -> ("token " + authToken)
-    		  		).get()
+                 withHeaders(
+                   "Accept" -> "application/json",
+                   "Authorization" -> ("token " + authToken)
+                 ).get()
       
       for (
         resp <- new RefFuture(ws);
         json = resp.json;
         id <- (resp.json \ "id").asOpt[Int].map(_.toString)
       ) yield {
-        UserRecord(
+        OAuthDetails(
+          userRecord = UserRecord(
             service = "github",
             id = id,
             name = (json \ "name").asOpt[String],
             nickname = (json \ "login").asOpt[String],
             username = (json \ "login").asOpt[String],
-            avatar = (json \ "avatar_url").asOpt[String],
-            raw = Some(json)
-          )
+            avatar = (json \ "avatar_url").asOpt[String]
+          ),
+          raw = Some(json)
+        )
       }
     }    
     
@@ -116,7 +121,8 @@ object GitHubController extends Controller {
       authToken <- authTokenFromCode(code) orIfNone Refused("GitHub did not provide an authorization token");
       mem <- userFromAuth(authToken) orIfNone Refused("GitHub did not provide any user data for that login")
     ) yield mem
-    PlayAuth.onAuth(refMem)(request)
+    
+    PlayAuth.onAuthR(refMem)(request)
   }
   
 }
