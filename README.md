@@ -4,46 +4,45 @@ Handy-Play-OAuth is a very simple social login library for Scala [Play](http://p
 
 It just handles the OAuth, and then gives the user data to whatever Action method you choose.  
 
+The latest version supports:
 
-## Getting handy-play-oath
+* Twitter
+* GitHub
+
+
+
+## Getting handy-play-oauth
 
 Handy-play-oauth can be added as a dependency to your Play app.
 
-The dependency for Play 2.1 is
+The dependency for Play 2.2 is
 
-    com.wbillingsley %% handy-play-oauth % 0.1
+    com.wbillingsley %% handy-play-oauth % 0.2-SNAPSHOT
 
-You'll need to add a resolver to a repository where it is published. Currently, that means adding to your Play project settings
+It's published to Sonatypes's snapshot repository, so you'll need to add a resolver for it. You can do that by adding this to your `build.sbt` file:
 
-    resolvers ++= Seq(
-        "handy releases" at "https://bitbucket.org/wbillingsley/mavenrepo/raw/master/releases/",
-        "handy snapshots" at "https://bitbucket.org/wbillingsley/mavenrepo/raw/master/snapshots/"
-    ) 
+    resolvers += Resolver.sonatypeRepo("snapshots")
 
 
 ## How to use it
 
-The primary part of configuration is to set your `onAuth` method -- what you want your app to do when the OAuth process has completed.
+This library will perform the OAuth, and then hand the details off to a method you write. Writing your method is just like writing a controller method. It will be passed the OAuth information in a `Try[OAuthDetails]`.
 
-Write the method just as if it were any other method on your controller. The method will be passed a `Ref[UserRecord]` containing data from the social service. (`UserRecord` just contains the received data. It doesn't need to match your application's user classes.)
-
-    def onAuth(loginData:Ref[UserRecord]) = Action { 
+    def onAuth(loginData:Try[OAuthDetails]) = Action { 
       implicit request => 
     
-      // Do your stuff here
+      // Do your stuff here. The OAuth info is in loginData
       
     }
 
-
 Then tell Handy-Play-OAuth about it:
-
 
     import com.wbillingsley.handy.playoauth.PlayAuth
     
     PlayAuth.onAuth = MyController.onAuth
 
 
-Then set up your routes. You can just forward a subpath to them.
+Next set up your routes. You can just forward a subpath to them.
 
     ->  /oauth   handyplayoauth.Routes
 
@@ -58,9 +57,7 @@ By default, the routes are `POST` routes, rather than `GET` routes. But if you w
 
     PlayAuth.allowGet = true
 
-And the last thing we need to do is set the client keys and secrets for the different services. There's two ways of doing this.
-
-By default, Handy Play OAuth looks for configuration settings (which you can set in `application.conf`).  The settings it looks for are:
+And the last thing we need to do is set the client keys and secrets for the different services. Handy Play OAuth looks for configuration settings (which you can set in `application.conf`).  The settings it looks for are:
 
 * auth.github.ckey
 * auth.github.csecret
@@ -68,16 +65,16 @@ By default, Handy Play OAuth looks for configuration settings (which you can set
 * auth.twitter.csecret
 * *etc*
 
-Or you can set them programmatically:
+Typically, you'd set those to environment variables, so you can use different keys and secrets on your development machine than in production:
 
-    import com.wbillingsley.handy.playoauth.controllers._
-
-    GitHubController.clientKey = Some(myKey)
-    GitHubController.clientSecret = Some(mySecret)
-    TwitterController.clientKey = Some(myKey)
-    TwitterController.clientSecret = Some(mySecret)
+    auth.twitter.ckey =    ${?MYAPP_AUTH_TWITTER_CKEY}
+    auth.twitter.csecret = ${?MYAPP_AUTH_TWITTER_CSECRET}
+    auth.github.ckey =     ${?MYAPP_AUTH_GITHUB_CKEY}
+    auth.github.csecret =  ${?MYAPP_AUTH_GITHUB_CSECRET}
+    
 
 Congratulations, you're ready to go.
+
 
 ## Getting a list of configured services
 
