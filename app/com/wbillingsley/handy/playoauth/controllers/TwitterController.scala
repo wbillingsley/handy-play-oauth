@@ -10,6 +10,9 @@ import play.api.Play
 import Play.current
 import com.wbillingsley.handy.playoauth.PlayAuth
 
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
+
+
 /**
  * Handles Twitter log-in. Based on sample code from Play Framework 
  * documentation.

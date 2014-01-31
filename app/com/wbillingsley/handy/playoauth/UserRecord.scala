@@ -28,6 +28,8 @@ object UserRecord {
   
 }
 
+trait Token
+
 trait Details
 
 case class OAuthDetails(

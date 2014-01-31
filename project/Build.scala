@@ -9,7 +9,7 @@ object ApplicationBuild extends Build {
     val appVersion      = "0.2-SNAPSHOT"
      
     val appDependencies = Seq(
-      "com.wbillingsley" %% "handy" % "0.5-SNAPSHOT"	
+      "com.wbillingsley" %% "handy" % "0.5.0-RC1"
     )
 
   lazy val aaaMain = play.Project(appName, appVersion, appDependencies).settings(
@@ -19,7 +19,10 @@ object ApplicationBuild extends Build {
     templatesImport += "com.wbillingsley.handy._",
 
     resolvers ++= Seq(
-        "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"
+        "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/",
+
+        "bintrayW" at "http://dl.bintray.com/wbillingsley/maven"
+
     )    
         // Add your own project settings here      
   ).dependsOn(
