@@ -3,6 +3,7 @@ package com.wbillingsley.handy.playoauth
 import com.wbillingsley.handy.Ref
 import play.api.mvc.{Action, EssentialAction, Request, Results, AnyContent}
 import scala.util.{Try, Success, Failure}
+import scala.concurrent.Promise
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.iteratee.Iteratee
 import play.api.Play
@@ -20,7 +21,7 @@ object PlayAuth {
     import play.api.libs.concurrent.Execution.Implicits._
     
     import scala.concurrent.promise
-    val p = promise[EssentialAction]
+    val p = Promise[EssentialAction]()
     
     rur.onComplete(
       onSuccess = { ur => p.success(onAuth(Success(ur))) },

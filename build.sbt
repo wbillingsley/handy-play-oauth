@@ -1,9 +1,8 @@
-
-scalaVersion in ThisBuild := "2.10.3"
+scalaVersion in ThisBuild := "2.11.1"
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature")
 
-crossScalaVersions in ThisBuild := Seq("2.10.3")
+crossScalaVersions in ThisBuild := Seq("2.11.1")
 
 licenses in ThisBuild := Seq("MIT License" -> url("http://www.opensource.org/licenses/mit-license.php"))
 
@@ -19,18 +18,40 @@ publishTo in ThisBuild <<= version { (v: String) =>
     Some("releases"  at nexus + "service/local/staging/deploy/maven2")
 }
 
-parallelExecution in Test := false
-
 pomExtra in ThisBuild := (
   <scm>
     <url>git@github.com:wbillingsley/handy-play-oauth.git</url>
     <connection>scm:git:git@github.com:wbillingsley/handy-play-oauth.git</connection>
   </scm>
-  <developers>
-    <developer>
-      <id>wbillingsley</id>
-      <name>William Billingsley</name>
-      <url>http://www.wbillingsley.com</url>
-    </developer>
-  </developers>
+    <developers>
+      <developer>
+        <id>wbillingsley</id>
+        <name>William Billingsley</name>
+        <url>http://www.wbillingsley.com</url>
+      </developer>
+    </developers>
+  )
+
+lazy val root = (project in file(".")).enablePlugins(PlayScala)
+
+name := "handy-play-oauth"
+
+organization := "com.wbillingsley"
+
+version := "0.3.0-SNAPSHOT"
+
+parallelExecution in Test := false
+
+TwirlKeys.templateImports += "com.wbillingsley.handy._"
+
+resolvers ++= Seq(
+  Resolver.sonatypeRepo("snapshots"),
+  "bintrayW" at "http://dl.bintray.com/wbillingsley/maven"
 )
+
+
+libraryDependencies ++= Seq(
+  "com.wbillingsley" %% "handy" % "0.6.0-SNAPSHOT",
+  ws
+)
+
