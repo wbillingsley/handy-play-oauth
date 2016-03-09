@@ -1,8 +1,8 @@
-scalaVersion in ThisBuild := "2.11.1"
+scalaVersion in ThisBuild := "2.11.7"
 
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature")
 
-crossScalaVersions in ThisBuild := Seq("2.11.1")
+crossScalaVersions in ThisBuild := Seq("2.11.7")
 
 licenses in ThisBuild := Seq("MIT License" -> url("http://www.opensource.org/licenses/mit-license.php"))
 
@@ -13,7 +13,8 @@ publishMavenStyle in ThisBuild := true
 publishTo in ThisBuild <<= version { (v: String) =>
   val nexus = "https://oss.sonatype.org/"
   if (v.trim.endsWith("SNAPSHOT"))
-    Some("snapshots" at nexus + "content/repositories/snapshots")
+    Some("Hopper snapshots" at "http://hopper.une.edu.au:8081/artifactory/libs-snapshot-local")
+    //Some("snapshots" at nexus + "content/repositories/snapshots")
   else
     Some("releases"  at nexus + "service/local/staging/deploy/maven2")
 }
@@ -38,7 +39,7 @@ name := "handy-play-oauth"
 
 organization := "com.wbillingsley"
 
-version := "0.3.0-SNAPSHOT"
+version := "0.4.0-SNAPSHOT"
 
 parallelExecution in Test := false
 
@@ -51,7 +52,7 @@ resolvers ++= Seq(
 
 
 libraryDependencies ++= Seq(
-  "com.wbillingsley" %% "handy" % "0.6.0-SNAPSHOT",
+  "com.wbillingsley" %% "handy" % "0.7.0-SNAPSHOT",
   ws
 )
 
